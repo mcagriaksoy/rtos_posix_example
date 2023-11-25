@@ -1,5 +1,5 @@
 // Mehmet Cagri Aksoy
-// RTOS Example for Audivo GmbH
+// RTOS Example
 // 21.11.2023
 
 #include <stdio.h>
