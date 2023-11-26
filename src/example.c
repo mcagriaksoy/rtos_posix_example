@@ -1,20 +1,23 @@
 // Mehmet Cagri Aksoy
-// RTOS Example
-// 21.11.2023
+// RTOS Example - 21.11.2023
 
+// Standard includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
+// FreeRTOS includes
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
 #include "timers.h"
 
+// User defined includes
 #define ELEMENT_SIZE (200)     // 200 elements
 #define TASK_DELAY_TIME (1000) // milliseconds
 
+// Global variables
 static QueueHandle_t pos_queue = NULL;
 static SemaphoreHandle_t mutex;
 static TimerHandle_t auto_timer;
@@ -27,6 +30,16 @@ void vTimerCallback(TimerHandle_t xTimer)
     printf("[Timer Thread] Current time: %s\r\n",
            ctime(&current_time) // convert time to string
     );
+
+    // If 60 seconds passed, delete the timer and stop the scheduler.
+    if (xTimerIsTimerActive(auto_timer) == pdTRUE)
+    {
+        if (xTimerGetExpiryTime(auto_timer) >= pdMS_TO_TICKS(60000))
+        {
+            xTimerDelete(auto_timer, 0);
+            vTaskEndScheduler();
+        }
+    }
 }
 
 // Producer thread
@@ -165,6 +178,7 @@ int main(void)
         return -1;
     }
 
+    // Create a queue for inter-thread communication.
     pos_queue = xQueueCreate(ELEMENT_SIZE, sizeof(uint32_t));
     if (pos_queue == NULL)
     {
@@ -173,5 +187,6 @@ int main(void)
     }
 
     vTaskStartScheduler();
+
     return 0;
 }
