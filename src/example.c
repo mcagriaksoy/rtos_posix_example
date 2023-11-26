@@ -10,13 +10,26 @@
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
+#include "timers.h"
 
-#define ELEMENT_SIZE (200)    // 200 elements
-#define TASK_DELAY_TIME (750) // milliseconds
+#define ELEMENT_SIZE (200)     // 200 elements
+#define TASK_DELAY_TIME (1000) // milliseconds
 
 static QueueHandle_t pos_queue = NULL;
 static SemaphoreHandle_t mutex;
+static TimerHandle_t auto_timer;
 
+// Timer callback function
+void vTimerCallback(TimerHandle_t xTimer)
+{
+    time_t current_time;
+    time(&current_time); // get current time
+    printf("[Timer Thread] Current time: %s\r\n",
+           ctime(&current_time) // convert time to string
+    );
+}
+
+// Producer thread
 void producer(void *pvParameters)
 {
     uint32_t *ptr = (uint32_t *)pvParameters;
@@ -27,6 +40,7 @@ void producer(void *pvParameters)
         uint32_t random_number = rand() % ELEMENT_SIZE;
         uint32_t random_position = rand() % ELEMENT_SIZE;
 
+        // The producer should wait for the consumer to finish reading the position.
         if (xSemaphoreTake(mutex, 0) == pdTRUE)
         {
             ptr[random_position] = random_number;
@@ -51,6 +65,7 @@ void producer(void *pvParameters)
     }
 }
 
+// Consumer thread
 void consumer(void *pvParameters)
 {
     uint32_t *ptr = (uint32_t *)pvParameters;
@@ -87,6 +102,33 @@ void consumer(void *pvParameters)
     }
 }
 
+int timer_thread(void *pvParameters)
+{
+    auto_timer = xTimerCreate("Timer",
+                              pdMS_TO_TICKS(5000),
+                              pdTRUE, // auto-reload, if pdFALSE, it will be one-shot timer!
+                              NULL,
+                              vTimerCallback);
+    if (auto_timer == NULL)
+    {
+        printf("[Timer Thread] Timer creation failed.\r\n");
+        return -1;
+    }
+
+    if (xTimerStart(auto_timer, 0) != pdPASS)
+    {
+        printf("[Timer Thread] Timer start failed.\r\n");
+        return -1;
+    }
+
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(TASK_DELAY_TIME));
+    }
+
+    return 0;
+}
+
 int main(void)
 {
     srand(time(NULL));
@@ -111,6 +153,15 @@ int main(void)
     if (xTaskCreate(&consumer, "Consumer thread", 1024, &ptr, 1, NULL) != pdPASS)
     {
         printf("[Main] Consumer thread creation failed.\r\n");
+        return -1;
+    }
+
+    // Create a timer thread, which will be triggered every 5 seconds.
+    // If the timer is triggered, the timer thread should print out the current time.
+
+    if (xTaskCreate(&timer_thread, "Timer thread", 1024, NULL, 1, NULL) != pdPASS)
+    {
+        printf("[Main] Timer thread creation failed.\r\n");
         return -1;
     }
 
