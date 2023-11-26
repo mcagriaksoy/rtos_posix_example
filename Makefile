@@ -30,8 +30,9 @@ C_FILES			+= heap_3.c \
 				port.c \
 				wait_for_event.c \
 
+# Our Objects
 C_FILES			+= $(SOURCEDIR)/example.c
-
+C_FILES			+= $(SOURCEDIR)/deadlock_example.c
 
 # Include Paths
 INCLUDES        += -I$(RTOS_PATH)/Source/include
@@ -61,7 +62,7 @@ endif
 
 # Rules
 .PHONY : all
-all: example
+all: deadlock_example
 
 
 # Fix to place .o files in ODIR
@@ -72,7 +73,8 @@ $(ODIR)/%.o: %.c
 	@echo ">> Compiling $<"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
-example: $(_OBJS)
+
+deadlock_example: $(_OBJS)
 	@echo ">> Linking $@..."
 	@$(CC) $(CFLAGS) $(INCLUDES) $^ $(LINKFLAGS) $(LIBS) -o $@
 
@@ -83,6 +85,8 @@ example: $(_OBJS)
 .PHONY : clean
 clean:
 	@-rm -rf $(ODIR) example
+	@-rm -rf $(ODIR) deadlock_example
+
 	@echo "--------------"
 	@echo "CLEAN COMPLETE"
 	@echo "--------------"

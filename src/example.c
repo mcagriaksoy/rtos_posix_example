@@ -16,6 +16,7 @@
 // User defined includes
 #define ELEMENT_SIZE (200)     // 200 elements
 #define TASK_DELAY_TIME (1000) // milliseconds
+#define TIMEOUT (500)          // milliseconds
 
 // Global variables
 static QueueHandle_t pos_queue = NULL;
@@ -54,14 +55,14 @@ void producer(void *pvParameters)
         uint32_t random_position = rand() % ELEMENT_SIZE;
 
         // The producer should wait for the consumer to finish reading the position.
-        if (xSemaphoreTake(mutex, 0) == pdTRUE)
+        if (xSemaphoreTake(mutex, TIMEOUT) == pdTRUE)
         {
             ptr[random_position] = random_number;
             xSemaphoreGive(mutex);
         }
         else
         {
-            printf("[Producer Thread] Mutex is not available.\r\n");
+            printf("[Producer Thread] Mutex is not available or timeout.\r\n");
         }
 
         // Task 2.4 The producer should print out the position and number.
@@ -96,7 +97,7 @@ void consumer(void *pvParameters)
             // Task 2.7 The consumer should print out the position and number.
             printf("[Consumer Thread] Position: %d, Number: %d\r\n", written_position, ptr[written_position]);
 
-            if (xSemaphoreTake(mutex, 0) == pdTRUE)
+            if (xSemaphoreTake(mutex, TIMEOUT) == pdTRUE)
             {
                 // Task 2.8 The consumer should clean (set 0) to the position, which was read
                 ptr[written_position] = 0;
@@ -107,7 +108,7 @@ void consumer(void *pvParameters)
             }
             else
             {
-                printf("[Consumer Thread] Mutex is not available.\r\n");
+                printf("[Consumer Thread] Mutex is not available or timeout\r\n");
             }
         }
 
@@ -115,7 +116,7 @@ void consumer(void *pvParameters)
     }
 }
 
-int timer_thread(void *pvParameters)
+void timer_thread(void *pvParameters)
 {
     auto_timer = xTimerCreate("Timer",
                               pdMS_TO_TICKS(5000),
@@ -142,7 +143,7 @@ int timer_thread(void *pvParameters)
     return 0;
 }
 
-int main(void)
+int main2(void)
 {
     srand(time(NULL));
     // Task 2.1 Allocate memory for 200 elements, type: uint32_t
